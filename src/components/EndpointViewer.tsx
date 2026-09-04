@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Copy, Check } from 'lucide-react'
+import { Copy, Check, Loader2 } from 'lucide-react'
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
 
@@ -54,6 +54,7 @@ export function EndpointViewer({ match, onClose }: Props) {
   const [mode, setMode] = useState<'expected' | 'compare'>('expected')
   const [copied, setCopied] = useState(false)
   const [actualInput, setActualInput] = useState('')
+  const [fetching, setFetching] = useState(false)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const endpoint = useMemo(() => (match ? toEndpoint(match) : null), [match])
@@ -71,6 +72,20 @@ export function EndpointViewer({ match, onClose }: Props) {
   useEffect(() => () => {
     if (timeoutRef.current !== null) clearTimeout(timeoutRef.current)
   }, [])
+
+  async function handleFetchMock() {
+    if (!match) return
+    setFetching(true)
+    try {
+      const res = await fetch(`/api/mock-footy-scores/${match.id}`)
+      const data = await res.json() as unknown
+      setActualInput(JSON.stringify(data, null, 2))
+    } catch {
+      toast.error('Failed to fetch mock response')
+    } finally {
+      setFetching(false)
+    }
+  }
 
   async function handleCopy() {
     try {
@@ -151,6 +166,21 @@ export function EndpointViewer({ match, onClose }: Props) {
 
         {mode === 'compare' && (
           <div className="flex flex-col gap-3 flex-1 overflow-hidden min-h-0">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleFetchMock}
+                disabled={fetching}
+                title="Fetch a simulated FootyScores API response (includes intentional discrepancies)"
+              >
+                {fetching
+                  ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Fetching…</>
+                  : 'Fetch from mock API'
+                }
+              </Button>
+              <span className="text-xs text-muted-foreground">or paste manually below</span>
+            </div>
             <textarea
               value={actualInput}
               onChange={(e) => setActualInput(e.target.value)}

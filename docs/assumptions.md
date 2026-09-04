@@ -27,6 +27,19 @@ every mismatch with the expected and actual values side by side.
 FootyScores is a fictional application — no live API URL is available to automate the fetch.
 The comparison is therefore user-driven: the engineer fetches the response manually and pastes it in.
 
+A **mock FootyScores API** is provided at `/api/mock-footy-scores/[matchId]` to demonstrate
+the comparison feature end-to-end without a real external API. The **Fetch from mock API**
+button in the Compare tab populates the textarea automatically.
+
+The mock returns the correct match structure with three intentional discrepancies that
+simulate common API convention mismatches:
+
+| Field | Expected | Mock returns | Simulated issue |
+|---|---|---|---|
+| `status` | `"FT"` | `"FINISHED"` | API uses different status string |
+| `competition.season` | `"2024"` | `"2024/25"` | API uses different season format |
+| `score.halfTime` | `null` | `{"home":0,"away":0}` | API always returns HT score |
+
 ---
 
 ## Source

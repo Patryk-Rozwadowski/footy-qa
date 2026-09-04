@@ -40,6 +40,7 @@ Details: `docs/assumptions.md`
 - Data is never fetched automatically on page refresh
 - If live fetch fails, the API route falls back to `src/data/paris2024-seed.ts` (static snapshot); the UI labels seed data clearly
 - `EndpointViewer` has a **Compare with actual** tab — QA engineer pastes a FootyScores API response, tool diffs it field-by-field against the expected endpoint
+- `/api/mock-footy-scores/[matchId]` serves a simulated FootyScores response with three intentional discrepancies (`status`, `competition.season`, `score.halfTime`) to demonstrate the comparison feature without a real external API
 - Each decision documented in `docs/decisions/`
 
 ## Commands
@@ -61,7 +62,8 @@ src/
 │   ├── layout.tsx            # root layout (Sonner toaster, fonts)
 │   ├── globals.css           # global Tailwind base styles
 │   └── api/
-│       └── scrape/route.ts   # API route: live fetch → seed fallback
+│       ├── scrape/route.ts                     # API route: live fetch → seed fallback
+│       └── mock-footy-scores/[matchId]/route.ts # mock FootyScores API with intentional discrepancies
 ├── components/
 │   ├── DynamicHome.tsx       # ssr=false wrapper to avoid hydration issues
 │   ├── HomeClient.tsx        # main client component (state, layout, actions)

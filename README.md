@@ -17,7 +17,7 @@ npm run dev       # starts at http://localhost:3000
 2. Click **Generate Endpoints** to load match data
 3. Browse the match table — click the eye icon on any row to open the endpoint viewer
 4. **Expected tab** — copy the generated JSON to use as a test fixture
-5. **Compare with actual tab** — paste a FootyScores API response to diff it field-by-field against the expected endpoint
+5. **Compare with actual tab** — click **Fetch from mock API** to load a simulated FootyScores response with intentional discrepancies, or paste any JSON manually; the tool diffs it field-by-field against the expected endpoint
 6. Click **Export JSON** to download all endpoints as a single JSON file
 
 ## Installation & running
