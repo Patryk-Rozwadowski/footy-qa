@@ -66,3 +66,23 @@ export interface Match extends OlympicEvent {
 }
 
 export type SportFilter = string
+
+// Exported endpoint shape — matches example.json exactly.
+// Internal fields (id, sport, discipline) are stripped before export.
+export interface MatchEndpoint {
+  competition: {
+    name: string
+    season: string
+    round: string
+  }
+  venue: Venue
+  kickoff: string | null
+  status: EventStatus
+  teams: {
+    home: string
+    away: string
+  }
+  score: Score
+  scorers: Scorer[]
+  lineups: Lineups
+}

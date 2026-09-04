@@ -1,6 +1,7 @@
 'use client'
 
 import { Match } from '@/types/match'
+import { toEndpoint } from '@/lib/mapper'
 import {
   Dialog,
   DialogContent,
@@ -22,7 +23,8 @@ export function EndpointViewer({ match, onClose }: Props) {
 
   if (!match) return null
 
-  const json = JSON.stringify(match, null, 2)
+  const endpoint = toEndpoint(match)
+  const json = JSON.stringify(endpoint, null, 2)
 
   async function handleCopy() {
     try {

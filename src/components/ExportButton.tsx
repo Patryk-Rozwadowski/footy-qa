@@ -1,6 +1,7 @@
 'use client'
 
 import { Match } from '@/types/match'
+import { toEndpoint } from '@/lib/mapper'
 import { Button } from '@/components/ui/button'
 import { Download } from 'lucide-react'
 
@@ -12,7 +13,8 @@ interface Props {
 
 export function ExportButton({ matches, sport, disabled }: Props) {
   function handleExport() {
-    const json = JSON.stringify(matches, null, 2)
+    const endpoints = matches.map(toEndpoint)
+    const json = JSON.stringify(endpoints, null, 2)
     const blob = new Blob([json], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')

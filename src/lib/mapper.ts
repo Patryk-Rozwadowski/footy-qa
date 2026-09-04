@@ -1,4 +1,4 @@
-import { OlympicEvent, Match } from '@/types/match'
+import { OlympicEvent, Match, MatchEndpoint } from '@/types/match'
 
 function isMatch(event: OlympicEvent): event is Match {
   return (
@@ -39,3 +39,16 @@ export const SPORT_GROUPS: { label: string; sports: string[] }[] = [
 export const ALL_SPORTS: string[] = SPORT_GROUPS.flatMap((g) => g.sports)
 
 export const DEFAULT_SPORT = 'Football'
+
+export function toEndpoint(match: Match): MatchEndpoint {
+  return {
+    competition: match.competition,
+    venue: match.venue,
+    kickoff: match.kickoff,
+    status: match.status,
+    teams: match.teams,
+    score: match.score,
+    scorers: match.scorers,
+    lineups: match.lineups,
+  }
+}
