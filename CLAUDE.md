@@ -14,14 +14,17 @@ which QA engineers can compare against what the API actually returns.
 
 - **Framework:** Next.js 14 (App Router), TypeScript
 - **Styling:** Tailwind CSS
-- **Scraping:** Next.js API route with Playwright (JS-rendered page)
+- **Data fetching:** Next.js API route with `fetch` to the official Olympics JSON API
 - **Cache:** client-side localStorage
 - **Deployment:** Vercel
 
 ## Data Source
 
-Single source of truth: `https://stacy.olympics.com/en/paris-2024/competition-schedule`
+Single source of truth:
+`https://stacy.olympics.com/srm/data/oly/schedule/day/ENG/{date}.json`
 
+One JSON file per day, fetched in parallel for the full football window (2024-07-24 → 2024-08-11).
+Requires a browser-like `User-Agent` header — no authentication needed.
 Data is historical (Paris 2024 is over) and will never change.
 
 ## Output Format
@@ -32,9 +35,9 @@ Details: `docs/assumptions.md`
 
 ## Key Architectural Decisions
 
-- Scraper fetches ALL Olympic sports and returns `OlympicEvent[]` — sport filtering is a separate layer
-- Football is the default filter; the UI sport selector switches filters without re-fetching
-- Scraping is triggered once by the user (UI button), results stored in localStorage
+- API fetcher filters for `disciplineCode === 'FBL'` at the source — returns football matches only
+- The UI sport selector switches between Men's / Women's Football without re-fetching
+- Fetching is triggered once by the user (UI button), results stored in localStorage
 - Data is never fetched automatically on page refresh
 - Each decision documented in `docs/decisions/`
 

@@ -59,7 +59,11 @@ Olympic football does not follow traditional league/round structure.
 | Match finished after penalties | `"AP"` |
 | Match cancelled | `"CANC"` |
 
-All Paris 2024 matches are already played — in practice all will be `"FT"`, `"AET"` or `"AP"`.
+**Limitation:** The official schedule API returns `"FINISHED"` for every completed match regardless
+of how it ended (regular time, extra time, or penalties). Distinguishing `FT` / `AET` / `AP`
+would require fetching the individual match detail page for each knockout match.
+For Paris 2024, all group stage matches ended in regular time. Knockout matches that went
+to extra time or penalties are currently reported as `"FT"` — this is a known gap.
 
 ## Output Ordering
 

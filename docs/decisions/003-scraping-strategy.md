@@ -1,49 +1,60 @@
-# ADR-003: Scraping Strategy
+# ADR-003: Data Retrieval Strategy
 
 ## Context
 
-`stacy.olympics.com/en/paris-2024/competition-schedule` is JavaScript-rendered —
-a plain HTTP fetch returns empty HTML with no match data.
-Scraping must happen server-side (not in the browser) to avoid CORS issues and bot detection.
+`stacy.olympics.com` provides the official Paris 2024 competition schedule.
+The public-facing page (`/en/paris-2024/schedule/football`) is JavaScript-rendered
+and protected by Akamai WAF, blocking both plain HTTP fetch and headless browsers (Playwright).
+
+By inspecting the browser's Network tab it was discovered that the page loads its data
+from a set of static JSON files — one per day:
+
+```
+https://stacy.olympics.com/srm/data/oly/schedule/day/ENG/{date}.json
+```
+
+These files are publicly accessible with a standard browser `User-Agent` header.
+No authentication or session cookies are required.
 
 ## Decision
 
-Scraping runs inside a **Next.js API route** (`/api/scrape`) using **Playwright** (headless Chromium).
-The frontend calls this endpoint when the user clicks "Generate Endpoints".
+Replace Playwright-based HTML scraping with direct **fetch calls** to the per-day JSON API.
+The server-side API route (`/api/scrape`) fetches one file per day for the full football
+window (2024-07-24 → 2024-08-11), all in parallel, then filters and maps the results.
 
 ```
-Client (React) → POST /api/scrape → Playwright → stacy.olympics.com
+Client (React) → GET /api/scrape → fetch {date}.json × 19 days (parallel)
                                          ↓
-                              parse HTML → filter football matches
+                              filter disciplineCode=FBL + scheduleItemType=H2H_NOC
                                          ↓
-                              JSON with matches ← response to client
+                              map OlympicUnit → Match → JSON response to client
 ```
 
 ## Football Match Identification
 
-Since there is no dedicated Olympic API, football matches are identified by filtering on:
-1. Sport name in the schedule (e.g. "Football", "Soccer")
-2. Venue names (football stadiums: Parc des Princes, Stade de Lyon, etc.)
+Each unit in the JSON has:
+- `disciplineCode: "FBL"` — identifies football events
+- `scheduleItemType: "H2H_NOC"` — identifies head-to-head team matches (excludes training sessions, ceremonies)
 
 ## Rationale
 
-- Playwright handles JS-rendered pages, unlike fetch/axios
-- Next.js API route removes the need for a separate server
-- Server-side scraping bypasses CORS
-- Playwright is the industry standard for browser automation and scraping
+- No headless browser or binary dependencies — `fetch` is built into Node.js
+- Parallel requests complete in under 2 seconds on average
+- Works in serverless environments (Vercel) without size constraints
+- Data comes directly from the official Olympic source in a structured format
 
 ## Rejected Alternatives
 
 | Option | Reason for rejection |
 |---|---|
-| fetch / axios (plain HTTP) | JS-rendered page — returns empty HTML |
-| Client-side scraping | CORS blocks cross-origin requests from the browser |
-| Official Olympic API | No public API exists for this schedule |
-| Third-party sports APIs (api-football.com) | Do not include Olympic data or require a paid subscription |
+| Playwright / headless browser | Blocked by Akamai WAF; adds ~100 MB dependency |
+| Client-side fetch to Olympics API | CORS blocks cross-origin requests from the browser |
+| Third-party sports APIs | Do not include Olympic data or require paid subscription |
 
 ## Consequences
 
-+ Reliable data extraction from a JS-rendered page
-+ Single endpoint handles the entire scraping pipeline
-- Playwright adds ~100 MB to project dependencies
-- Vercel cold start may take a few seconds (Playwright requires a Chromium binary)
++ No external browser dependencies — `npm install` is all that's needed
++ Structured JSON is easier to parse reliably than scraped HTML
++ Works in Vercel serverless without Chromium binary size issues
+- Relies on an undocumented internal API; URL structure could change
+- Static fallback (`paris2024-seed.ts`) is retained for resilience
