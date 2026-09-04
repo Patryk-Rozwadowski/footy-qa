@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(New-Item -ItemType Directory -Force \"D:\\\\deloitte task\\\\docs\\\\decisions\")",
+      "Bash(Out-Null)",
+      "Bash(Write-Host \"Created docs/decisions/\")",
+      "PowerShell(New-Item *)",
+      "PowerShell(Rename-Item *)",
+      "PowerShell(Get-ChildItem \"D:\\\\footy-qa\" -Force | ForEach-Object { $_.Name })",
+      "PowerShell(Get-ChildItem \"D:\\\\deloitte task\" -Force | ForEach-Object { $_.Name })"
+    ]
+  }
+}
