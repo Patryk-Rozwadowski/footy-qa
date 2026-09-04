@@ -32,6 +32,8 @@ Details: `docs/assumptions.md`
 
 ## Key Architectural Decisions
 
+- Scraper fetches ALL Olympic sports and returns `OlympicEvent[]` — sport filtering is a separate layer
+- Football is the default filter; the UI sport selector switches filters without re-fetching
 - Scraping is triggered once by the user (UI button), results stored in localStorage
 - Data is never fetched automatically on page refresh
 - Each decision documented in `docs/decisions/`

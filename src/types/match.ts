@@ -1,8 +1,4 @@
-export interface Competition {
-  name: string
-  season: string
-  round: string
-}
+export type EventStatus = 'FT' | 'AET' | 'AP' | 'CANC' | 'TBD' | 'LIVE'
 
 export interface Venue {
   name: string
@@ -42,13 +38,24 @@ export interface Lineups {
   away: TeamLineup | null
 }
 
-export type MatchStatus = 'FT' | 'AET' | 'AP' | 'CANC' | 'TBD'
-
-export interface Match {
-  competition: Competition
+// Base type for every Olympic event regardless of sport
+export interface OlympicEvent {
+  id: string
+  sport: string
+  discipline: string
+  round: string
   venue: Venue
   kickoff: string | null
-  status: MatchStatus
+  status: EventStatus
+}
+
+// Extension for match-format sports (football, basketball, volleyball, etc.)
+export interface Match extends OlympicEvent {
+  competition: {
+    name: string
+    season: string
+    round: string
+  }
   teams: {
     home: string
     away: string
@@ -57,3 +64,5 @@ export interface Match {
   scorers: Scorer[]
   lineups: Lineups
 }
+
+export type SportFilter = string
