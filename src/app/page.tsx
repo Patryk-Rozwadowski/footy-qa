@@ -1,10 +1,5 @@
-import dynamic from 'next/dynamic'
-
-const HomeClient = dynamic(
-  () => import('@/components/HomeClient').then((m) => m.HomeClient),
-  { ssr: false }
-)
+import { DynamicHome } from '@/components/DynamicHome'
 
 export default function Home() {
-  return <HomeClient />
+  return <DynamicHome />
 }

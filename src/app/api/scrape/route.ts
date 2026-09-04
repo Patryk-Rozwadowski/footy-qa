@@ -18,8 +18,15 @@ export async function GET() {
     console.warn('[scrape] Live scraping failed, using seed data:', msg)
   }
 
+  const sorted = [...PARIS_2024_EVENTS].sort((a, b) => {
+    if (!a.kickoff && !b.kickoff) return 0
+    if (!a.kickoff) return 1
+    if (!b.kickoff) return -1
+    return new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime()
+  })
+
   return NextResponse.json({
-    events: PARIS_2024_EVENTS,
+    events: sorted,
     fetchedAt: new Date().toISOString(),
     source: 'seed',
   })
