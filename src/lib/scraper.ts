@@ -1,181 +1,132 @@
-import { chromium } from 'playwright'
-import { Match, EventStatus, Venue } from '@/types/match'
+import { Match, EventStatus } from '@/types/match'
 
-const OLYMPIC_URL =
+const BASE_URL =
   process.env.OLYMPIC_SCHEDULE_URL ??
-  'https://stacy.olympics.com/en/paris-2024/competition-schedule'
+  'https://stacy.olympics.com/srm/data/oly/schedule/day/ENG'
 
-// Team sports that share the Match data structure
-const TEAM_SPORTS: Record<string, string> = {
-  football: 'Football',
-  soccer: 'Football',
-  basketball: 'Basketball',
-  volleyball: 'Volleyball',
-  'beach volleyball': 'Beach Volleyball',
-  handball: 'Handball',
-  'water polo': 'Water Polo',
-  hockey: 'Hockey',
-  'field hockey': 'Hockey',
-  'rugby sevens': 'Rugby Sevens',
-  rugby: 'Rugby Sevens',
+const FETCH_HEADERS = {
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
 }
 
-function normalizeStatus(raw: string): EventStatus {
-  const s = raw.trim().toUpperCase()
-  if (s === 'FT' || s === 'FINISHED' || s === 'FINAL') return 'FT'
-  if (s === 'AET' || s === 'AFTER EXTRA TIME') return 'AET'
-  if (s === 'AP' || s === 'AFTER PENALTIES' || s === 'PSO') return 'AP'
+interface OlympicUnit {
+  id: string
+  disciplineCode: string
+  eventUnitName: string
+  phaseName: string
+  startDate: string
+  venueDescription: string
+  locationDescription: string
+  status: string
+  scheduleItemType: string
+  competitors: Array<{
+    name: string
+    order: number
+    results: { mark: string }
+  }>
+}
+
+function mapStatus(raw: string): EventStatus {
+  const s = raw.toUpperCase()
+  if (s.includes('EXTRA TIME') || s === 'AET') return 'AET'
+  if (s.includes('PENALT') || s === 'PSO') return 'AP'
+  if (s === 'FINISHED' || s === 'FINAL') return 'FT'
   if (s === 'CANCELLED' || s === 'CANCELED' || s === 'CANC') return 'CANC'
   if (s === 'LIVE' || s === 'ONGOING') return 'LIVE'
   return 'TBD'
 }
 
-function resolveTeamSport(rawSport: string): string | null {
-  const key = rawSport.toLowerCase().trim()
-  for (const [pattern, canonical] of Object.entries(TEAM_SPORTS)) {
-    if (key.includes(pattern)) return canonical
-  }
-  return null
+function mapRound(phaseName: string): string {
+  const lower = phaseName.toLowerCase()
+  if (lower.includes('group')) return 'Group Stage'
+  if (lower.includes('quarter')) return 'Quarter-final'
+  if (lower.includes('semi')) return 'Semi-final'
+  if (lower.includes('bronze')) return 'Bronze Medal Match'
+  if (lower.includes('gold') || lower.includes('final')) return 'Gold Medal Match'
+  return phaseName
 }
 
-function generateId(sport: string, round: string, home: string, away: string, kickoff: string | null): string {
-  const slug = [sport, round, home, away, kickoff ?? 'tbd']
-    .join('-')
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, '-')
-    .replace(/-+/g, '-')
-  return slug
+function parseCity(locationDescription: string): string {
+  const idx = locationDescription.lastIndexOf(',')
+  return idx >= 0 ? locationDescription.slice(idx + 1).trim() : 'Paris'
+}
+
+function generateDates(start: string, end: string): string[] {
+  const dates: string[] = []
+  const current = new Date(start)
+  const endDate = new Date(end)
+  while (current <= endDate) {
+    dates.push(current.toISOString().split('T')[0])
+    current.setDate(current.getDate() + 1)
+  }
+  return dates
 }
 
 export async function scrapeOlympicSchedule(): Promise<Match[]> {
-  const browser = await chromium.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-blink-features=AutomationControlled'],
+  // Paris 2024 Olympic football ran 2024-07-24 to 2024-08-10
+  const dates = generateDates('2024-07-24', '2024-08-10')
+
+  const dayResults = await Promise.all(
+    dates.map(async (date) => {
+      try {
+        const res = await fetch(`${BASE_URL}/${date}.json`, {
+          headers: FETCH_HEADERS,
+          signal: AbortSignal.timeout(10000),
+        })
+        if (!res.ok) return []
+        const data = await res.json() as { units: OlympicUnit[] }
+        return data.units.filter(
+          (u) => u.disciplineCode === 'FBL' && u.scheduleItemType === 'H2H_NOC'
+        )
+      } catch {
+        return []
+      }
+    })
+  )
+
+  const matches: Match[] = dayResults.flat().flatMap((unit) => {
+    const home = unit.competitors.find((c) => c.order === 0)
+    const away = unit.competitors.find((c) => c.order === 1)
+    if (!home || !away) return []
+
+    const round = mapRound(unit.phaseName)
+
+    return [{
+      id: unit.id,
+      sport: 'Football',
+      discipline: unit.eventUnitName,
+      round,
+      venue: {
+        name: unit.venueDescription,
+        city: parseCity(unit.locationDescription),
+      },
+      kickoff: unit.startDate,
+      status: mapStatus(unit.status),
+      competition: {
+        name: 'Paris 2024 Olympics',
+        season: '2024',
+        round,
+      },
+      teams: {
+        home: home.name,
+        away: away.name,
+      },
+      score: {
+        home: home.results.mark !== '' ? parseInt(home.results.mark, 10) : null,
+        away: away.results.mark !== '' ? parseInt(away.results.mark, 10) : null,
+        halfTime: null,
+      },
+      scorers: [],
+      lineups: { home: null, away: null },
+    }]
   })
-  const context = await browser.newContext({
-    userAgent:
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-    viewport: { width: 1280, height: 800 },
-    locale: 'en-US',
+
+  matches.sort((a, b) => {
+    if (!a.kickoff && !b.kickoff) return 0
+    if (!a.kickoff) return 1
+    if (!b.kickoff) return -1
+    return new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime()
   })
 
-  try {
-    const page = await context.newPage()
-    await page.addInitScript(() => {
-      Object.defineProperty(navigator, 'webdriver', { get: () => undefined })
-    })
-    await page.goto(OLYMPIC_URL, { waitUntil: 'networkidle', timeout: 30000 })
-
-    // Wait for schedule content to render
-    await page.waitForSelector('[class*="schedule"], [class*="event"], [class*="match"]', {
-      timeout: 10000,
-    }).catch(() => { /* page may use different selectors — fall through to full parse */ })
-
-    const rawEvents = await page.evaluate(() => {
-      const results: Array<{
-        sport: string
-        discipline: string
-        round: string
-        venue: string
-        city: string
-        kickoff: string | null
-        status: string
-        homeTeam: string
-        awayTeam: string
-        homeScore: number | null
-        awayScore: number | null
-      }> = []
-
-      // Try multiple selector strategies to be resilient to markup changes
-      const rows = document.querySelectorAll(
-        '[class*="ScheduleRow"], [class*="schedule-row"], [class*="EventRow"], [class*="match-row"], tr[class*="event"]'
-      )
-
-      rows.forEach((row) => {
-        const text = (selector: string) =>
-          row.querySelector(selector)?.textContent?.trim() ?? ''
-
-        const sport = text('[class*="sport"], [class*="Sport"]')
-        const discipline = text('[class*="discipline"], [class*="Discipline"]') || sport
-        const round = text('[class*="round"], [class*="Round"], [class*="phase"], [class*="Phase"]')
-        const venue = text('[class*="venue"], [class*="Venue"], [class*="stadium"], [class*="Stadium"]')
-        const city = text('[class*="city"], [class*="City"], [class*="location"], [class*="Location"]')
-        const kickoffRaw = row.querySelector('[class*="date"], [class*="time"], time')
-          ?.getAttribute('datetime') ??
-          row.querySelector('[class*="date"], [class*="time"], time')?.textContent?.trim() ??
-          null
-        const status = text('[class*="status"], [class*="Status"]') || 'TBD'
-
-        const teamEls = row.querySelectorAll('[class*="team"], [class*="Team"]')
-        const homeTeam = teamEls[0]?.textContent?.trim() ?? 'TBD'
-        const awayTeam = teamEls[1]?.textContent?.trim() ?? 'TBD'
-
-        const scoreEls = row.querySelectorAll('[class*="score"], [class*="Score"]')
-        const homeScore = scoreEls[0] ? parseInt(scoreEls[0].textContent ?? '', 10) : null
-        const awayScore = scoreEls[1] ? parseInt(scoreEls[1].textContent ?? '', 10) : null
-
-        if (sport || homeTeam !== 'TBD') {
-          results.push({
-            sport,
-            discipline,
-            round,
-            venue,
-            city,
-            kickoff: kickoffRaw,
-            status,
-            homeTeam,
-            awayTeam,
-            homeScore: isNaN(homeScore as number) ? null : homeScore,
-            awayScore: isNaN(awayScore as number) ? null : awayScore,
-          })
-        }
-      })
-
-      return results
-    })
-
-    const events: Match[] = rawEvents
-      .filter((e) => resolveTeamSport(e.sport) !== null)
-      .map((e) => {
-        const canonicalSport = resolveTeamSport(e.sport) ?? e.sport
-        const venue: Venue = { name: e.venue || 'Unknown', city: e.city || 'Paris' }
-        const kickoff = e.kickoff ?? null
-
-        return {
-          id: generateId(canonicalSport, e.round, e.homeTeam, e.awayTeam, kickoff),
-          sport: canonicalSport,
-          discipline: e.discipline,
-          round: e.round || 'Group Stage',
-          venue,
-          kickoff,
-          status: normalizeStatus(e.status),
-          teams: { home: e.homeTeam, away: e.awayTeam },
-          score: {
-            home: e.homeScore,
-            away: e.awayScore,
-            halfTime: null,
-          },
-          scorers: [],
-          lineups: { home: null, away: null },
-          competition: {
-            name: 'Paris 2024 Olympics',
-            season: '2024',
-            round: e.round || 'Group Stage',
-          },
-        }
-      })
-
-    // Deterministic sort: ascending kickoff, nulls last
-    events.sort((a, b) => {
-      if (!a.kickoff && !b.kickoff) return 0
-      if (!a.kickoff) return 1
-      if (!b.kickoff) return -1
-      return new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime()
-    })
-
-    return events
-  } finally {
-    await context.close()
-    await browser.close()
-  }
+  return matches
 }

@@ -6,7 +6,6 @@ A QA tool for generating expected API responses for every football match played 
 
 ```bash
 npm install
-npx playwright install chromium
 ```
 
 ## Running Locally
@@ -25,8 +24,6 @@ The app is optimised for [Vercel](https://vercel.com). One-command deploy:
 npx vercel
 ```
 
-> **Note:** Playwright-based live scraping is not available in Vercel's serverless environment due to binary size limits. The app automatically falls back to bundled static seed data — see [Data Retrieval](#data-retrieval) below.
-
 ## Usage
 
 1. Click **Generate Endpoints** — the app loads all football matches from the Olympic schedule.
@@ -37,16 +34,13 @@ npx vercel
 
 ## Data Retrieval
 
-Match data is sourced from the official Paris 2024 Olympic schedule:
-`https://stacy.olympics.com/en/paris-2024/competition-schedule`
+Match data is sourced from the official Paris 2024 Olympic schedule JSON API:
+`https://stacy.olympics.com/srm/data/oly/schedule/day/ENG/{date}.json`
 
-The pipeline has two stages:
+The server-side API route (`/api/scrape`) fetches one JSON file per day covering the full Olympic football window (2024-07-24 → 2024-08-10), filters events by `disciplineCode === "FBL"`, and maps them to the endpoint format.
 
-**Stage 1 — Live scraping (Playwright)**
-The server-side API route (`/api/scrape`) launches a headless Chromium browser, navigates to the Olympic schedule, waits for JavaScript rendering, and extracts team sport events. Results are filtered to football matches only.
-
-**Stage 2 — Static fallback**
-If the live URL is unreachable (bot protection, network error, or serverless environment), the app falls back to `src/data/paris2024-seed.ts` — a bundled dataset of all 58 Paris 2024 football matches (32 Men's + 26 Women's) compiled from official results. The UI displays a **"Static data"** badge when the fallback is active.
+**Static fallback**
+If the API is unreachable (network error or rate limiting), the app falls back to `src/data/paris2024-seed.ts` — a bundled dataset of Paris 2024 football matches. The UI displays a **"Static data"** badge when the fallback is active.
 
 Scraped or loaded data is cached in `localStorage`. Subsequent page loads restore data from cache instantly without re-fetching.
 
