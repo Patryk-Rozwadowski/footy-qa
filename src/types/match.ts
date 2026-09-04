@@ -65,8 +65,6 @@ export interface Match extends OlympicEvent {
   lineups: Lineups
 }
 
-export type SportFilter = string
-
 // Exported endpoint shape — matches example.json exactly.
 // Internal fields (id, sport, discipline) are stripped before export.
 export interface MatchEndpoint {

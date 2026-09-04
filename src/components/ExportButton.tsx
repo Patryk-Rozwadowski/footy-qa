@@ -7,11 +7,10 @@ import { Download } from 'lucide-react'
 
 interface Props {
   matches: Match[]
-  sport: string
   disabled?: boolean
 }
 
-export function ExportButton({ matches, sport, disabled }: Props) {
+export function ExportButton({ matches, disabled }: Props) {
   function handleExport() {
     const endpoints = matches.map(toEndpoint)
     const json = JSON.stringify(endpoints, null, 2)
@@ -19,7 +18,7 @@ export function ExportButton({ matches, sport, disabled }: Props) {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `paris-2024-${sport.toLowerCase().replace(/\s+/g, '-')}-endpoints.json`
+    a.download = 'paris-2024-football-endpoints.json'
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -31,7 +30,7 @@ export function ExportButton({ matches, sport, disabled }: Props) {
       variant="outline"
       onClick={handleExport}
       disabled={disabled || matches.length === 0}
-      aria-label={`Export ${matches.length} ${sport} matches as JSON`}
+      aria-label={`Export ${matches.length} matches as JSON`}
     >
       <Download className="h-4 w-4 mr-2" />
       Export JSON ({matches.length})

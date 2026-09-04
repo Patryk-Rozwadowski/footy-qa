@@ -1681,7 +1681,7 @@ export const PARIS_2024_EVENTS: Match[] = [
     "id": "FBLMTEAM11------------FNL-000200--",
     "sport": "Football",
     "discipline": "Men's Bronze Medal Match",
-    "round": "Gold Medal Match",
+    "round": "Bronze Medal Match",
     "venue": {
       "name": "La Beaujoire Stadium",
       "city": "Nantes"
@@ -1691,7 +1691,7 @@ export const PARIS_2024_EVENTS: Match[] = [
     "competition": {
       "name": "Paris 2024 Olympics",
       "season": "2024",
-      "round": "Gold Medal Match"
+      "round": "Bronze Medal Match"
     },
     "teams": {
       "home": "Egypt",
@@ -1712,7 +1712,7 @@ export const PARIS_2024_EVENTS: Match[] = [
     "id": "FBLWTEAM11------------FNL-000200--",
     "sport": "Football",
     "discipline": "Women's Bronze Medal Match",
-    "round": "Gold Medal Match",
+    "round": "Bronze Medal Match",
     "venue": {
       "name": "Lyon Stadium",
       "city": "Lyon"
@@ -1722,7 +1722,7 @@ export const PARIS_2024_EVENTS: Match[] = [
     "competition": {
       "name": "Paris 2024 Olympics",
       "season": "2024",
-      "round": "Gold Medal Match"
+      "round": "Bronze Medal Match"
     },
     "teams": {
       "home": "Spain",

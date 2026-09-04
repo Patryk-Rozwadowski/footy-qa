@@ -33,11 +33,27 @@ The UI displays the timestamp of the last fetch and allows a manual force re-fet
 | Scrape on every refresh | Slow; unnecessary load on the Olympic server |
 | sessionStorage | Data lost on tab close — poor UX |
 | Backend database | Overkill; local tool, not multi-user |
-| Hardcoded data in repo | Does not demonstrate scraping; does not satisfy "trigger data loading" requirement |
+| Hardcoded data as primary source | Does not demonstrate scraping; does not satisfy "trigger data loading" requirement |
+
+## Static Seed Fallback
+
+`src/data/paris2024-seed.ts` ships a pre-generated snapshot of all Paris 2024
+football matches. The API route uses it when live scraping fails:
+
+```
+GET /api/scrape
+  └─ scrapeOlympicSchedule()  ─── success → return live data + comparison
+  └─ error / empty            ─── fallback → return seed data (source: "seed")
+```
+
+The UI displays a "Static data" label whenever seed data is in use.
+This is a resilience mechanism, not a replacement for live scraping.
 
 ## Consequences
 
 + Zero infrastructure cost and complexity
 + Data persists across sessions
++ Seed fallback ensures the tool remains usable even if the Olympics API changes
 - localStorage limit (~5 MB) — irrelevant at this data scale (~50 matches)
 - Data is not shared across browsers or devices
+- Seed data is a point-in-time snapshot; it cannot reflect late changes to the source

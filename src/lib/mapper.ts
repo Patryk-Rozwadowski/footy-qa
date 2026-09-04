@@ -1,44 +1,13 @@
-import { OlympicEvent, Match, MatchEndpoint } from '@/types/match'
+import { Match, MatchEndpoint } from '@/types/match'
 
-function isMatch(event: OlympicEvent): event is Match {
-  return (
-    'teams' in event &&
-    'score' in event &&
-    'competition' in event &&
-    'scorers' in event &&
-    'lineups' in event
-  )
+export function sortByKickoff(events: Match[]): Match[] {
+  return [...events].sort((a, b) => {
+    if (!a.kickoff && !b.kickoff) return 0
+    if (!a.kickoff) return 1
+    if (!b.kickoff) return -1
+    return new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime()
+  })
 }
-
-export function filterBySport(events: OlympicEvent[], sport: string): Match[] {
-  const normalized = sport.trim().toLowerCase()
-  return events.filter(
-    (e): e is Match => e.sport.toLowerCase() === normalized && isMatch(e)
-  )
-}
-
-export const SPORT_GROUPS: { label: string; sports: string[] }[] = [
-  {
-    label: 'Football',
-    sports: ['Football'],
-  },
-  {
-    label: 'Other Team Sports',
-    sports: [
-      'Basketball',
-      'Volleyball',
-      'Beach Volleyball',
-      'Handball',
-      'Water Polo',
-      'Hockey',
-      'Rugby Sevens',
-    ],
-  },
-]
-
-export const ALL_SPORTS: string[] = SPORT_GROUPS.flatMap((g) => g.sports)
-
-export const DEFAULT_SPORT = 'Football'
 
 export function toEndpoint(match: Match): MatchEndpoint {
   return {

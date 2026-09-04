@@ -8,7 +8,7 @@ priority is ease of running and readable UI.
 
 ## Decision
 
-**Next.js 14 (App Router) + TypeScript + Tailwind CSS, deployed on Vercel.**
+**Next.js 16 (App Router) + TypeScript + Tailwind CSS, deployed on Vercel.**
 
 ## Rationale
 

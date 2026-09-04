@@ -10,10 +10,17 @@ export interface CachedData {
   source: 'live' | 'seed'
 }
 
-export function saveEvents(events: OlympicEvent[], source: 'live' | 'seed'): void {
-  localStorage.setItem(EVENTS_KEY, JSON.stringify(events))
-  localStorage.setItem(TIMESTAMP_KEY, new Date().toISOString())
-  localStorage.setItem(SOURCE_KEY, source)
+export function saveEvents(
+  events: OlympicEvent[],
+  source: 'live' | 'seed',
+): void {
+  try {
+    localStorage.setItem(EVENTS_KEY, JSON.stringify(events))
+    localStorage.setItem(TIMESTAMP_KEY, new Date().toISOString())
+    localStorage.setItem(SOURCE_KEY, source)
+  } catch (err) {
+    console.warn('[storage] Failed to save events to localStorage:', err)
+  }
 }
 
 export function loadEvents(): CachedData | null {

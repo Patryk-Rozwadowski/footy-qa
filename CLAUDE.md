@@ -12,7 +12,7 @@ which QA engineers can compare against what the API actually returns.
 
 ## Stack
 
-- **Framework:** Next.js 14 (App Router), TypeScript
+- **Framework:** Next.js 16 (App Router), TypeScript
 - **Styling:** Tailwind CSS
 - **Data fetching:** Next.js API route with `fetch` to the official Olympics JSON API
 - **Cache:** client-side localStorage
@@ -36,18 +36,20 @@ Details: `docs/assumptions.md`
 ## Key Architectural Decisions
 
 - API fetcher filters for `disciplineCode === 'FBL'` at the source — returns football matches only
-- The UI sport selector switches between Men's / Women's Football without re-fetching
 - Fetching is triggered once by the user (UI button), results stored in localStorage
 - Data is never fetched automatically on page refresh
+- If live fetch fails, the API route falls back to `src/data/paris2024-seed.ts` (static snapshot); the UI labels seed data clearly
+- `EndpointViewer` has a **Compare with actual** tab — QA engineer pastes a FootyScores API response, tool diffs it field-by-field against the expected endpoint
 - Each decision documented in `docs/decisions/`
 
 ## Commands
 
 ```bash
-npm install       # install dependencies
-npm run dev       # dev server (localhost:3000)
-npm run build     # production build
-npm run lint      # linting
+npm install            # install dependencies
+npm run dev            # dev server (localhost:3000)
+npm run build          # production build
+npm run lint           # linting
+npm run generate-seed  # re-fetch Olympic data and overwrite src/data/paris2024-seed.ts
 ```
 
 ## Project Structure
@@ -55,19 +57,27 @@ npm run lint      # linting
 ```
 src/
 ├── app/
-│   ├── page.tsx              # main view
+│   ├── page.tsx              # entry point — renders DynamicHome
+│   ├── layout.tsx            # root layout (Sonner toaster, fonts)
+│   ├── globals.css           # global Tailwind base styles
 │   └── api/
-│       └── scrape/route.ts   # API route that scrapes the Olympic schedule
+│       └── scrape/route.ts   # API route: live fetch → seed fallback
 ├── components/
+│   ├── DynamicHome.tsx       # ssr=false wrapper to avoid hydration issues
+│   ├── HomeClient.tsx        # main client component (state, layout, actions)
 │   ├── MatchTable.tsx        # match list table
-│   ├── EndpointViewer.tsx    # JSON preview for a selected match
-│   └── ExportButton.tsx      # export to JSON file
+│   ├── EndpointViewer.tsx    # expected JSON + Compare with actual tab
+│   ├── ExportButton.tsx      # export to JSON file
+│   └── ui/                   # shadcn/ui primitives (button, badge, dialog, etc.)
+├── data/
+│   └── paris2024-seed.ts     # static snapshot of all Paris 2024 football matches
 ├── lib/
-│   ├── scraper.ts            # scraping logic
-│   ├── mapper.ts             # maps raw data → example.json format
-│   └── storage.ts            # localStorage helpers
+│   ├── scraper.ts            # Olympic JSON API fetch + field mapping functions
+│   ├── mapper.ts             # sort, endpoint shape (toEndpoint)
+│   ├── storage.ts            # localStorage helpers
+│   └── utils.ts              # Tailwind class merge utility (cn)
 └── types/
-    └── match.ts              # TypeScript types
+    └── match.ts              # TypeScript types (OlympicEvent, Match, MatchEndpoint…)
 ```
 
 <!-- BEGIN:nextjs-agent-rules -->

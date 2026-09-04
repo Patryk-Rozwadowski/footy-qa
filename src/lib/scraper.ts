@@ -1,7 +1,7 @@
 import { Match, EventStatus } from '@/types/match'
+import { sortByKickoff } from '@/lib/mapper'
 
 const BASE_URL =
-  process.env.OLYMPIC_SCHEDULE_URL ??
   'https://stacy.olympics.com/srm/data/oly/schedule/day/ENG'
 
 const FETCH_HEADERS = {
@@ -9,16 +9,14 @@ const FETCH_HEADERS = {
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
 }
 
-interface OlympicUnit {
+export interface RawUnit {
   id: string
-  disciplineCode: string
-  eventUnitName: string
   phaseName: string
+  eventUnitName: string
   startDate: string
   venueDescription: string
   locationDescription: string
   status: string
-  scheduleItemType: string
   competitors: Array<{
     name: string
     order: number
@@ -26,7 +24,12 @@ interface OlympicUnit {
   }>
 }
 
-function mapStatus(raw: string): EventStatus {
+interface OlympicUnit extends RawUnit {
+  disciplineCode: string
+  scheduleItemType: string
+}
+
+export function mapStatus(raw: string): EventStatus {
   const s = raw.toUpperCase()
   if (s.includes('EXTRA TIME') || s === 'AET') return 'AET'
   if (s.includes('PENALT') || s === 'PSO') return 'AP'
@@ -36,19 +39,36 @@ function mapStatus(raw: string): EventStatus {
   return 'TBD'
 }
 
-function mapRound(phaseName: string): string {
+export function mapRound(phaseName: string, eventUnitName?: string): string {
   const lower = phaseName.toLowerCase()
+  const unitLower = (eventUnitName ?? '').toLowerCase()
   if (lower.includes('group')) return 'Group Stage'
   if (lower.includes('quarter')) return 'Quarter-final'
   if (lower.includes('semi')) return 'Semi-final'
-  if (lower.includes('bronze')) return 'Bronze Medal Match'
+  // Olympic API uses phaseName "Final" for bronze medal matches too;
+  // fall back to eventUnitName to distinguish them.
+  if (lower.includes('bronze') || unitLower.includes('bronze')) return 'Bronze Medal Match'
   if (lower.includes('gold') || lower.includes('final')) return 'Gold Medal Match'
   return phaseName
 }
 
-function parseCity(locationDescription: string): string {
+export function parseCity(locationDescription: string): string {
   const idx = locationDescription.lastIndexOf(',')
   return idx >= 0 ? locationDescription.slice(idx + 1).trim() : 'Paris'
+}
+
+export function parseMark(mark: string): number | null {
+  if (mark === '') return null
+  const n = parseInt(mark, 10)
+  return Number.isNaN(n) ? null : n
+}
+
+type Competitor = RawUnit['competitors'][0]
+
+export function findCompetitors(unit: RawUnit): [Competitor, Competitor] | null {
+  const home = unit.competitors.find((c) => c.order === 0)
+  const away = unit.competitors.find((c) => c.order === 1)
+  return home && away ? [home, away] : null
 }
 
 function generateDates(start: string, end: string): string[] {
@@ -62,7 +82,12 @@ function generateDates(start: string, end: string): string[] {
   return dates
 }
 
-export async function scrapeOlympicSchedule(): Promise<Match[]> {
+export interface ScrapeResult {
+  matches: Match[]
+  rawUnits: RawUnit[]
+}
+
+export async function scrapeOlympicSchedule(): Promise<ScrapeResult> {
   // Paris 2024 Olympic football ran 2024-07-24 to 2024-08-10 (women's final).
   // 2024-08-11 included as a safety margin for any late-scheduled matches.
   const dates = generateDates('2024-07-24', '2024-08-11')
@@ -79,18 +104,21 @@ export async function scrapeOlympicSchedule(): Promise<Match[]> {
         return data.units.filter(
           (u) => u.disciplineCode === 'FBL' && u.scheduleItemType === 'H2H_NOC'
         )
-      } catch {
+      } catch (err) {
+        console.warn(`[scraper] Failed to fetch schedule for ${date}:`, err)
         return []
       }
     })
   )
 
-  const matches: Match[] = dayResults.flat().flatMap((unit) => {
-    const home = unit.competitors.find((c) => c.order === 0)
-    const away = unit.competitors.find((c) => c.order === 1)
-    if (!home || !away) return []
+  const rawUnits: RawUnit[] = dayResults.flat()
 
-    const round = mapRound(unit.phaseName)
+  const matches: Match[] = rawUnits.flatMap((unit) => {
+    const competitors = findCompetitors(unit)
+    if (!competitors) return []
+    const [home, away] = competitors
+
+    const round = mapRound(unit.phaseName, unit.eventUnitName)
 
     return [{
       id: unit.id,
@@ -113,8 +141,8 @@ export async function scrapeOlympicSchedule(): Promise<Match[]> {
         away: away.name,
       },
       score: {
-        home: home.results.mark !== '' ? parseInt(home.results.mark, 10) : null,
-        away: away.results.mark !== '' ? parseInt(away.results.mark, 10) : null,
+        home: parseMark(home.results.mark),
+        away: parseMark(away.results.mark),
         halfTime: null,
       },
       scorers: [],
@@ -122,12 +150,5 @@ export async function scrapeOlympicSchedule(): Promise<Match[]> {
     }]
   })
 
-  matches.sort((a, b) => {
-    if (!a.kickoff && !b.kickoff) return 0
-    if (!a.kickoff) return 1
-    if (!b.kickoff) return -1
-    return new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime()
-  })
-
-  return matches
+  return { matches: sortByKickoff(matches), rawUnits }
 }

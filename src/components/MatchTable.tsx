@@ -17,7 +17,6 @@ interface Props {
   matches: Match[]
   onSelect: (match: Match) => void
   selectedId?: string
-  sport: string
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -48,18 +47,11 @@ function formatScore(match: Match): string {
   return `${home} – ${away}`
 }
 
-export function MatchTable({ matches, onSelect, selectedId, sport }: Props) {
+export function MatchTable({ matches, onSelect, selectedId }: Props) {
   if (matches.length === 0) {
     return (
-      <div
-        role="status"
-        className="py-16 text-center text-sm text-muted-foreground flex flex-col gap-2"
-      >
-        <p className="font-medium">No matches found for {sport}.</p>
-        <p className="text-xs">
-          Only Football (Men&apos;s and Women&apos;s) data is included in the current dataset.
-          Other sports can be added by extending the seed data or enabling live scraping.
-        </p>
+      <div role="status" className="py-16 text-center text-sm text-muted-foreground">
+        No matches found.
       </div>
     )
   }

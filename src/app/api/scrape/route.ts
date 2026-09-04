@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server'
 import { scrapeOlympicSchedule } from '@/lib/scraper'
+import { sortByKickoff } from '@/lib/mapper'
 import { PARIS_2024_EVENTS } from '@/data/paris2024-seed'
 
 export async function GET() {
-  // Try live scraping first; fall back to static seed data if blocked or unavailable
   try {
-    const events = await scrapeOlympicSchedule()
-    if (events.length > 0) {
+    const { matches } = await scrapeOlympicSchedule()
+    if (matches.length > 0) {
       return NextResponse.json({
-        events,
+        events: matches,
         fetchedAt: new Date().toISOString(),
         source: 'live',
       })
@@ -18,15 +18,8 @@ export async function GET() {
     console.warn('[scrape] Live scraping failed, using seed data:', msg)
   }
 
-  const sorted = [...PARIS_2024_EVENTS].sort((a, b) => {
-    if (!a.kickoff && !b.kickoff) return 0
-    if (!a.kickoff) return 1
-    if (!b.kickoff) return -1
-    return new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime()
-  })
-
   return NextResponse.json({
-    events: sorted,
+    events: sortByKickoff(PARIS_2024_EVENTS),
     fetchedAt: new Date().toISOString(),
     source: 'seed',
   })
